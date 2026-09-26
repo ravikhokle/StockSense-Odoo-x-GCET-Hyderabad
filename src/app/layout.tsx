@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { Toaster } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import "./globals.css";
 
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <AppShell>{children}</AppShell>
+        <Toaster position="top-right" closeButton richColors duration={3500} />
       </body>
     </html>
   );

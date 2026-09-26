@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Check, Edit3, LoaderCircle, Printer, Trash2, X, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { revalidateInventory } from "@/lib/actions/revalidate";
@@ -69,6 +70,7 @@ export function ReceiptDetail({
     setIsSavingEdit(false);
     setShowEdit(false);
     await revalidateInventory();
+    toast.success("Receipt updated.");
     router.refresh();
   }
 
@@ -84,6 +86,7 @@ export function ReceiptDetail({
     }
 
     await revalidateInventory();
+    toast.success("Receipt deleted.");
     router.push("/operations/receipts");
     router.refresh();
   }
@@ -100,6 +103,7 @@ export function ReceiptDetail({
       setError(result.error.message);
     } else {
       await revalidateInventory();
+      toast.success(`Receipt marked ${kind}.`);
       router.refresh();
     }
     setLoading(false);

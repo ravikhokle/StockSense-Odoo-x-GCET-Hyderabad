@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 
 import { revalidateInventory } from "@/lib/actions/revalidate";
@@ -52,6 +53,7 @@ export function ReceiptForm({ products, locations }: { products: Product[]; loca
     }
     await revalidateInventory();
     router.refresh();
+    toast.success("Receipt created.");
     router.push(`/operations/receipts/${receipt.id}`);
   }
 

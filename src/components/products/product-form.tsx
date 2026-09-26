@@ -5,6 +5,7 @@ import { LoaderCircle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 import { revalidateInventory } from "@/lib/actions/revalidate";
 import { createClient } from "@/lib/supabase/client";
@@ -93,6 +94,7 @@ export function ProductForm({ product, categories, locations, onClose, onSaved }
 
     await revalidateInventory();
     router.refresh();
+    toast.success(isEditing ? "Product updated." : "Product created.");
     onSaved();
   }
 

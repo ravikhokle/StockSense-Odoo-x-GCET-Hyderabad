@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CalendarDays, ChevronRight, LoaderCircle, Plus, Search, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { revalidateInventory } from "@/lib/actions/revalidate";
@@ -53,6 +54,7 @@ export function DeliveryList({ initialDeliveries = [] }: { initialDeliveries?: D
     setDeletingDelivery(null);
     setIsDeleting(false);
     await revalidateInventory();
+    toast.success("Delivery deleted.");
     router.refresh();
   }
 

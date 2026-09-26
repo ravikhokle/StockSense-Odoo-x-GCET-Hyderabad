@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Edit3, LoaderCircle, MapPin, Plus, Search, Trash2, Warehouse as WarehouseIcon, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -63,6 +64,7 @@ function WarehouseForm({
       return;
     }
     await revalidateInventory();
+    toast.success("Warehouse deleted.");
     router.refresh();
     onSaved();
   }

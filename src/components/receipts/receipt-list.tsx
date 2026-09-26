@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CalendarDays, ChevronRight, Edit3, LoaderCircle, Plus, Search, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { revalidateInventory } from "@/lib/actions/revalidate";
@@ -58,6 +59,7 @@ export function ReceiptList({ initialReceipts = [] }: { initialReceipts?: Receip
     setDeletingReceipt(null);
     setIsDeleting(false);
     await revalidateInventory();
+    toast.success("Receipt deleted.");
     router.refresh();
   }
 

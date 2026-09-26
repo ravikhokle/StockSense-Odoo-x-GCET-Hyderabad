@@ -3,6 +3,7 @@
 import { Edit3, LoaderCircle, MapPin, Plus, Search, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -50,6 +51,7 @@ function LocationForm({
       return;
     }
     await revalidateInventory();
+    toast.success("Location deleted.");
     router.refresh();
     onSaved();
   }

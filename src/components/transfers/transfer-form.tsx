@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 
 import { revalidateInventory } from "@/lib/actions/revalidate";
@@ -52,6 +53,7 @@ export function TransferForm({ products, locations }: { products: Product[]; loc
     }
     await revalidateInventory();
     router.refresh();
+    toast.success("Transfer created.");
     router.push(`/operations/transfers/${transfer.id}`);
   }
 

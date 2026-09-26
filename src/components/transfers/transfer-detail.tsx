@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Check, Edit3, LoaderCircle, Trash2, X, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { revalidateInventory } from "@/lib/actions/revalidate";
@@ -73,6 +74,7 @@ export function TransferDetail({
     setIsSavingEdit(false);
     setShowEdit(false);
     await revalidateInventory();
+    toast.success("Transfer updated.");
     router.refresh();
   }
 
@@ -88,6 +90,7 @@ export function TransferDetail({
     }
 
     await revalidateInventory();
+    toast.success("Transfer deleted.");
     router.push("/operations/transfers");
     router.refresh();
   }
@@ -104,6 +107,7 @@ export function TransferDetail({
       setError(result.error.message);
     } else {
       await revalidateInventory();
+      toast.success(`Transfer marked ${kind}.`);
       router.refresh();
     }
     setLoading(false);

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { revalidateInventory } from "@/lib/actions/revalidate";
@@ -48,6 +49,7 @@ export function TransferList({ initialTransfers = [] }: { initialTransfers?: Tra
     setDeletingTransfer(null);
     setIsDeleting(false);
     await revalidateInventory();
+    toast.success("Transfer deleted.");
     router.refresh();
   }
 

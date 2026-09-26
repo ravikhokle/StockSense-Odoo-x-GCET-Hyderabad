@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 
 import { revalidateInventory } from "@/lib/actions/revalidate";
@@ -64,6 +65,7 @@ export function AdjustmentWorkspace({
     }
     await revalidateInventory();
     router.refresh();
+    toast.success("Stock adjustment saved.");
     form.reset({ productId: "", locationId: "", countedQuantity: 0, reason: "" });
   }
 

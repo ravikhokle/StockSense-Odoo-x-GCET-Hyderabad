@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Edit3, LoaderCircle, PackagePlus, Search, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { ProductForm } from "@/components/products/product-form";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
@@ -129,6 +130,7 @@ export function ProductList({
   async function handleProductSaved() {
     setShowForm(false);
     await revalidateInventory();
+    toast.success("Product deleted.");
     router.refresh();
     void loadProducts();
   }

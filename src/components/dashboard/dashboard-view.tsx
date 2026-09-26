@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -16,9 +16,7 @@ import {
   Package,
   PackageCheck,
   Plus,
-  RefreshCw,
   SlidersHorizontal,
-  Sparkles,
   Warehouse,
   X,
 } from "lucide-react";
@@ -124,6 +122,23 @@ export function DashboardView({
   const [warehouseFilter, setWarehouseFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [lowStockAlertsEnabled, setLowStockAlertsEnabled] = useState(true);
+  const [alertsDismissed, setAlertsDismissed] = useState(false);
+
+  useEffect(() => {
+    const readAlertPreference = () => {
+      try {
+        const stored = JSON.parse(localStorage.getItem("stocksense.inventory-preferences") ?? "{}");
+        setLowStockAlertsEnabled(stored.lowStockAlerts !== false);
+      } catch {
+        setLowStockAlertsEnabled(true);
+      }
+    };
+
+    readAlertPreference();
+    window.addEventListener("storage", readAlertPreference);
+    return () => window.removeEventListener("storage", readAlertPreference);
+  }, []);
 
   const hasActiveFilters =
     docTypeFilter !== "all" ||
@@ -208,6 +223,7 @@ export function DashboardView({
   const inStockPercentage = totalProducts > 0 ? Math.round((healthyProductsCount / totalProducts) * 100) : 0;
   const lowStockPercentage = totalProducts > 0 ? Math.round((lowStockProducts.length / totalProducts) * 100) : 0;
   const outOfStockPercentage = totalProducts > 0 ? Math.round((outOfStockProducts.length / totalProducts) * 100) : 0;
+  const inventoryAlertCount = lowStockProducts.length + outOfStockProducts.length;
 
   // Filter receipts
   const filteredReceipts = useMemo(() => {
@@ -352,29 +368,17 @@ export function DashboardView({
   ];
 
   return (
-    <section className="mx-auto max-w-7xl space-y-8 pb-12">
+    <section className="mx-auto max-w-7xl space-y-5 pb-8">
       {/* Top Banner & Quick Action Center */}
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-linear-to-b from-white via-slate-50/50 to-white p-6 shadow-[0_12px_36px_-20px_rgba(15,23,42,0.12)] sm:p-8">
-        <div className="absolute right-0 top-0 -mr-16 -mt-16 size-72 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none" />
-        <div className="absolute left-1/3 bottom-0 -mb-16 size-72 rounded-full bg-sky-500/5 blur-3xl pointer-events-none" />
+      <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
 
         <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
           <div>
-            <div className="flex items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
-                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Live Inventory Hub
-              </span>
-              <span className="text-xs text-slate-400">·</span>
-              <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
-                <RefreshCw className="size-3 text-slate-400" /> Real-time sync
-              </span>
-            </div>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-950">
               Dashboard
             </h1>
-            <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-500">
-              Complete oversight of network inventory health, stock movements, and pending fulfillments.
+            <p className="mt-1.5 max-w-xl text-sm text-slate-500">
+              Inventory levels, stock movements, and tasks that need attention.
             </p>
           </div>
 
@@ -382,40 +386,40 @@ export function DashboardView({
           <div className="flex flex-wrap items-center gap-2.5">
             <Link
               href="/products"
-              className="inline-flex h-9.5 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-xs hover:border-emerald-300 hover:bg-emerald-50/40 hover:text-emerald-800 transition-all"
-            >
-              <Package className="size-3.5 text-emerald-600" /> + Add Product
+              className="inline-flex h-9.5 items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+              >
+              <Package className="size-3.5 text-emerald-600" /> Add product
             </Link>
             <Link
               href="/operations/receipts/new"
-              className="inline-flex h-9.5 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-xs hover:border-emerald-300 hover:bg-emerald-50/40 hover:text-emerald-800 transition-all"
-            >
-              <ArrowDownToLine className="size-3.5 text-emerald-600" /> + Inbound Receipt
+              className="inline-flex h-9.5 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50"
+              >
+              <ArrowDownToLine className="size-3.5 text-emerald-600" /> New receipt
             </Link>
             <Link
               href="/operations/deliveries/new"
-              className="inline-flex h-9.5 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-xs hover:border-violet-300 hover:bg-violet-50/40 hover:text-violet-800 transition-all"
-            >
-              <ArrowUpFromLine className="size-3.5 text-violet-600" /> + Outbound Delivery
+              className="inline-flex h-9.5 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 transition-colors hover:border-violet-300 hover:bg-violet-50"
+              >
+              <ArrowUpFromLine className="size-3.5 text-violet-600" /> New delivery
             </Link>
             <Link
               href="/operations/transfers/new"
-              className="inline-flex h-9.5 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-xs hover:border-amber-300 hover:bg-amber-50/40 hover:text-amber-800 transition-all"
-            >
-              <ArrowLeftRight className="size-3.5 text-amber-600" /> + Transfer
+              className="inline-flex h-9.5 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 transition-colors hover:border-amber-300 hover:bg-amber-50"
+              >
+              <ArrowLeftRight className="size-3.5 text-amber-600" /> New transfer
             </Link>
           </div>
         </div>
 
         {/* Health status summary strip */}
-        <div className="mt-7 pt-6 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="mt-6 border-t border-slate-100 pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-100/70 text-emerald-700">
               <PackageCheck className="size-4.5" />
             </span>
             <div>
-              <p className="text-xs font-bold text-slate-800">
-                Network Stock Health: {inStockPercentage}% Optimal
+              <p className="text-xs font-semibold text-slate-800">
+                Stock health: {inStockPercentage}% healthy
               </p>
               <p className="text-[11px] text-slate-400">
                 {healthyProductsCount} in stock · {lowStockProducts.length} low stock · {outOfStockProducts.length} depleted
@@ -423,7 +427,7 @@ export function DashboardView({
             </div>
           </div>
           {/* Tri-color progress meter */}
-          <div className="w-full sm:w-64">
+          <div className="w-full sm:w-56">
             <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100 shadow-inner">
               <div
                 style={{ width: `${inStockPercentage}%` }}
@@ -445,40 +449,63 @@ export function DashboardView({
         </div>
       </div>
 
+      {lowStockAlertsEnabled && inventoryAlertCount > 0 && !alertsDismissed && (
+        <div className="flex items-start justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-amber-950">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-amber-600 ring-1 ring-amber-200">
+              <AlertTriangle className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Inventory needs attention</p>
+              <p className="mt-0.5 text-xs text-amber-800">
+                {outOfStockProducts.length > 0 && `${outOfStockProducts.length} out of stock`}
+                {outOfStockProducts.length > 0 && lowStockProducts.length > 0 && " · "}
+                {lowStockProducts.length > 0 && `${lowStockProducts.length} low stock`}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <Link href="/products" className="text-xs font-semibold text-amber-900 underline underline-offset-2 hover:text-amber-700">
+              Review products
+            </Link>
+            <button
+              type="button"
+              onClick={() => setAlertsDismissed(true)}
+              className="text-xs font-medium text-amber-700 hover:text-amber-950"
+              aria-label="Dismiss inventory alert"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* KPI Cards Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {kpis.map(({ label, value, hint, icon: Icon, tone, accent, link, warning }) => (
+        {kpis.map(({ label, value, hint, icon: Icon, tone, link, warning }) => (
           <Link
             key={label}
             href={link}
-            className={`group relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-lg hover:border-slate-300 transition-all duration-200 ${
+            className={`group relative overflow-hidden rounded-xl border border-slate-200/90 bg-white p-3.5 hover:border-slate-300 transition-colors duration-200 ${
               warning ? "ring-1 ring-amber-300/40" : ""
             }`}
           >
-            {accent && (
-              <div
-                className={`absolute inset-x-0 top-0 h-1 bg-linear-to-r ${accent} opacity-80 group-hover:opacity-100 transition-opacity`}
-              />
-            )}
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-slate-900 transition-colors">
+                <p className="text-xs font-semibold text-slate-500 group-hover:text-slate-900 transition-colors">
                   {label}
                 </p>
-                <p className="mt-3 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+                <p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">
                   {value}
                 </p>
               </div>
-              <span className={`flex size-11 items-center justify-center rounded-xl ring-2 transition-transform duration-200 group-hover:scale-105 ${tone}`}>
-                <Icon className="size-5.5" strokeWidth={1.9} />
+              <span className={`flex size-10 items-center justify-center rounded-lg ring-2 transition-transform duration-200 group-hover:scale-105 ${tone}`}>
+                <Icon className="size-5" strokeWidth={1.9} />
               </span>
             </div>
-            <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+            <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
               <span className="text-xs font-medium text-slate-400 group-hover:text-slate-600 transition-colors">
                 {hint}
-              </span>
-              <span className="text-xs font-semibold text-emerald-600 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                Inspect <ChevronRight className="size-3" />
               </span>
             </div>
           </Link>
@@ -487,7 +514,7 @@ export function DashboardView({
 
       {/* Filters Hub */}
       <form
-        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] sm:p-6"
+        className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6"
         onSubmit={(e) => e.preventDefault()}
       >
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
@@ -497,7 +524,7 @@ export function DashboardView({
             </span>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-slate-900">Filter workspace</h2>
+                <h2 className="text-sm font-bold text-slate-900">Filters</h2>
                 {hasActiveFilters && (
                   <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
                     Active
@@ -505,7 +532,7 @@ export function DashboardView({
                 )}
               </div>
               <p className="mt-0.5 text-xs text-slate-500">
-                Refine metric cards and recent activity across warehouses, locations, and categories.
+                Narrow the dashboard by document, warehouse, location, or category.
               </p>
             </div>
           </div>
@@ -607,9 +634,9 @@ export function DashboardView({
       </form>
 
       {/* Real Operations & Activity Hub (Replaces Empty Boxes!) */}
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-5 xl:grid-cols-2">
         {/* Recent Deliveries Card */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] sm:p-6 flex flex-col justify-between">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3">
@@ -680,7 +707,7 @@ export function DashboardView({
         </div>
 
         {/* Recent Receipts Card */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] sm:p-6 flex flex-col justify-between">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3">
@@ -751,7 +778,7 @@ export function DashboardView({
         </div>
 
         {/* Recent Transfers Card */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] sm:p-6 flex flex-col justify-between">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3">
@@ -826,7 +853,7 @@ export function DashboardView({
         </div>
 
         {/* Low Stock & Critical Inventory Alerts */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] sm:p-6 flex flex-col justify-between">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3">
@@ -903,7 +930,7 @@ export function DashboardView({
       {/* Network Storage Distribution Section */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Storage Location Utilization */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] sm:p-6">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-100">
             <div className="flex items-center gap-2.5">
               <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
@@ -946,7 +973,7 @@ export function DashboardView({
         </div>
 
         {/* Category Breakdown */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] sm:p-6">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-100">
             <div className="flex items-center gap-2.5">
               <span className="flex size-8 items-center justify-center rounded-lg bg-sky-50 text-sky-700">

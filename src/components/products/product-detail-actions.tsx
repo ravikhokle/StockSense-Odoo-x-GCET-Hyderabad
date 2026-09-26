@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Edit3, Trash2 } from "lucide-react";
 import { ProductForm } from "@/components/products/product-form";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
@@ -40,6 +41,7 @@ export function ProductDetailActions({
     }
 
     await revalidateInventory();
+    toast.success("Product deleted.");
     router.push("/products");
     router.refresh();
   }
