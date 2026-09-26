@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ProductForm } from "@/components/products/product-form";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { formatProductDatabaseError } from "@/lib/products/errors";
 import type { Product, ProductWithStock } from "@/types/database";
 
 const PAGE_SIZE = 8;
@@ -53,7 +54,7 @@ export function ProductList() {
       supabase.from("categories").select("name").order("name"),
     ]);
     if (productError || categoryError) {
-      setError(productError?.message ?? categoryError?.message ?? "Could not load products.");
+      setError(formatProductDatabaseError(productError?.message ?? categoryError?.message ?? "Could not load products."));
       setLoading(false);
       return;
     }

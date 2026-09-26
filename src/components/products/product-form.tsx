@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { createClient } from "@/lib/supabase/client";
+import { formatProductDatabaseError } from "@/lib/products/errors";
 import { productSchema, type ProductFormInput, type ProductFormValues } from "@/lib/products/schemas";
 import type { Product } from "@/types/database";
 
@@ -51,7 +52,7 @@ export function ProductForm({ product, categories, onClose, onSaved }: { product
     let categoryId: string;
     const { data: existingCategory, error: categoryLookupError } = await supabase.from("categories").select("id").ilike("name", values.category).maybeSingle();
     if (categoryLookupError) {
-      setFormError(categoryLookupError.message);
+      setFormError(formatProductDatabaseError(categoryLookupError.message));
       return;
     }
     if (existingCategory) {
@@ -59,7 +60,7 @@ export function ProductForm({ product, categories, onClose, onSaved }: { product
     } else {
       const { data: createdCategory, error: categoryError } = await supabase.from("categories").insert({ name: values.category }).select("id").single();
       if (categoryError || !createdCategory) {
-        setFormError(categoryError?.code === "23505" ? "That category already exists. Try again." : categoryError?.message ?? "Could not create category.");
+        setFormError(categoryError?.code === "23505" ? "That category already exists. Try again." : formatProductDatabaseError(categoryError?.message ?? "Could not create category."));
         return;
       }
       categoryId = createdCategory.id;
@@ -68,18 +69,18 @@ export function ProductForm({ product, categories, onClose, onSaved }: { product
     if (isEditing && product) {
       const { error } = await supabase.from("products").update({ name: values.name, sku: values.sku, category_id: categoryId, unit: values.unit, reorder_level: values.reorderLevel }).eq("id", product.id);
       if (error) {
-        setFormError(error.code === "23505" ? "That SKU is already in use." : error.message);
+        setFormError(error.code === "23505" ? "That SKU is already in use." : formatProductDatabaseError(error.message));
         return;
       }
     } else {
       const { data: createdProduct, error } = await supabase.from("products").insert({ name: values.name, sku: values.sku, category_id: categoryId, unit: values.unit, reorder_level: values.reorderLevel }).select("id").single();
       if (error || !createdProduct) {
-        setFormError(error?.code === "23505" ? "That SKU is already in use." : error?.message ?? "Could not create product.");
+        setFormError(error?.code === "23505" ? "That SKU is already in use." : formatProductDatabaseError(error?.message ?? "Could not create product."));
         return;
       }
       const { error: stockError } = await supabase.from("stock_levels").insert({ product_id: createdProduct.id, location_name: "Default location", quantity: values.initialStock, reserved_quantity: 0 });
       if (stockError) {
-        setFormError(stockError.message);
+        setFormError(formatProductDatabaseError(stockError.message));
         return;
       }
     }
