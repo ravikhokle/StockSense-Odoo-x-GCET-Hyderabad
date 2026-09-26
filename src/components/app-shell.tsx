@@ -18,11 +18,12 @@ import {
   Warehouse,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/components/logout-button";
+import { createClient } from "@/lib/supabase/client";
 
 const primaryNavigation = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -96,6 +97,21 @@ function Navigation({ onNavigate }: { onNavigate: () => void }) {
 }
 
 function Sidebar({ onNavigate }: { onNavigate: () => void }) {
+  const [profileName, setProfileName] = useState("Account owner");
+
+  useEffect(() => {
+    let mounted = true;
+    void createClient().auth.getUser().then(({ data }) => {
+      if (!mounted) return;
+      const name = typeof data.user?.user_metadata?.name === "string" && data.user.user_metadata.name.trim() ? data.user.user_metadata.name : data.user?.email?.split("@")[0] ?? "Account owner";
+      setProfileName(name);
+    });
+    const handleNameUpdate = (event: Event) => { const name = (event as CustomEvent<string>).detail; if (name) setProfileName(name); };
+    window.addEventListener("stocksense-profile-name-updated", handleNameUpdate);
+    return () => { mounted = false; window.removeEventListener("stocksense-profile-name-updated", handleNameUpdate); };
+  }, []);
+
+  const initials = profileName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
       <div className="flex h-19 items-center justify-between border-b border-slate-100 px-5">
@@ -115,9 +131,9 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
       <div className="border-t border-slate-100 p-3">
         <div className="flex w-full items-center gap-2 rounded-lg p-2 text-left hover:bg-slate-50">
           <Link href="/profile" onClick={onNavigate} className="flex min-w-0 flex-1 items-center gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-800">AK</span>
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-800">{initials}</span>
             <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold text-slate-800">Alex Kim</span>
+            <span className="block truncate text-sm font-semibold text-slate-800">{profileName}</span>
             <span className="block truncate text-xs text-slate-400">Operations manager</span>
             </span>
           </Link>
