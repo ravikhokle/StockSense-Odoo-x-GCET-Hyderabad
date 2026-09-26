@@ -72,12 +72,38 @@ export type ReceiptItem = {
 
 export type StockMovement = {
   id: string;
-  receipt_id: string;
+  receipt_id: string | null;
+  delivery_id: string | null;
   product_id: string;
   location_id: string;
   quantity: number;
-  movement_type: "receipt";
+  movement_type: "receipt" | "delivery";
   created_at: string;
+};
+
+export type DeliveryStatus = "draft" | "waiting" | "ready" | "done" | "cancelled";
+
+export type Delivery = {
+  id: string;
+  reference: string;
+  delivery_address: string;
+  responsible: string;
+  operation_type: string;
+  source_location_id: string;
+  schedule_date: string;
+  status: DeliveryStatus;
+  created_at: string;
+  updated_at: string;
+  source_location?: Location | null;
+};
+
+export type DeliveryItem = {
+  id: string;
+  delivery_id: string;
+  product_id: string;
+  quantity: number;
+  created_at: string;
+  product?: Product | null;
 };
 
 export type ProductWithStock = Product & {
@@ -95,9 +121,11 @@ export type Database = {
       receipts: { Row: Receipt; Insert: Omit<Receipt, "id" | "created_at" | "updated_at" | "destination_location">; Update: Partial<Omit<Receipt, "id" | "created_at" | "updated_at" | "destination_location">> };
       receipt_items: { Row: ReceiptItem; Insert: Omit<ReceiptItem, "id" | "created_at" | "product">; Update: Partial<Omit<ReceiptItem, "id" | "created_at" | "product">> };
       stock_movements: { Row: StockMovement; Insert: Omit<StockMovement, "id" | "created_at">; Update: Partial<Omit<StockMovement, "id" | "created_at">> };
+      deliveries: { Row: Delivery; Insert: Omit<Delivery, "id" | "created_at" | "updated_at" | "source_location">; Update: Partial<Omit<Delivery, "id" | "created_at" | "updated_at" | "source_location">> };
+      delivery_items: { Row: DeliveryItem; Insert: Omit<DeliveryItem, "id" | "created_at" | "product">; Update: Partial<Omit<DeliveryItem, "id" | "created_at" | "product">> };
     };
     Views: Record<string, never>;
-    Functions: { complete_receipt: { Args: { p_receipt_id: string }; Returns: undefined } };
+    Functions: { complete_receipt: { Args: { p_receipt_id: string }; Returns: undefined }; complete_delivery: { Args: { p_delivery_id: string }; Returns: undefined } };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

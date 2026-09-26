@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { DeliveryList } from "@/components/deliveries/delivery-list";
 
 export default function DeliveriesPage() {
-  return <PlaceholderPage eyebrow="Operations" title="Deliveries" description="Outbound inventory workflows will be managed here." />;
+  return <DeliveryList />;
 }
