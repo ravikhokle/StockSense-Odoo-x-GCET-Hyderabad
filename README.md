@@ -1,7 +1,6 @@
 # StockSense 📦
 
-> **Next-Generation Inventory & Warehouse Management System**  
-> Built for the **Odoo x GCET Hackathon**
+> **Next-Generation Inventory & Warehouse Management System** 
 
 StockSense is a modern, high-performance inventory and supply-chain management application inspired by enterprise ERP workflows (Odoo Inventory). It provides real-time multi-warehouse inventory tracking, automated stock movements, purchase receipts, delivery orders, internal transfers, and physical cycle counts with an audit trail.
 

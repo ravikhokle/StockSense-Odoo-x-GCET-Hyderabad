@@ -1,11 +1,12 @@
 "use client";
 
-import { Edit3, LoaderCircle, MapPin, Plus, Search, X } from "lucide-react";
+import { Edit3, LoaderCircle, MapPin, Plus, Search, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { revalidateInventory } from "@/lib/actions/revalidate";
 import { createClient } from "@/lib/supabase/client";
 import { locationSchema, type LocationFormValues } from "@/lib/network/schemas";
@@ -132,6 +133,7 @@ export function LocationList({
   initialLocations?: Location[];
   initialWarehouses?: Warehouse[];
 }) {
+  const router = useRouter();
   const [locations, setLocations] = useState<Location[]>(initialLocations);
   const [warehouses, setWarehouses] = useState<Warehouse[]>(initialWarehouses);
   const [prevInitialLocations, setPrevInitialLocations] = useState(initialLocations);
@@ -153,6 +155,31 @@ export function LocationList({
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Location>();
+  const [deletingLocation, setDeletingLocation] = useState<Location | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleDeleteLocation() {
+    if (!deletingLocation) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    const supabase = createClient();
+    const { error: err } = await supabase.from("locations").delete().eq("id", deletingLocation.id);
+    if (err) {
+      if (err.code === "23503") {
+        setDeleteError("Cannot delete this location because it has active stock levels or transaction history.");
+      } else {
+        setDeleteError(err.message);
+      }
+      setIsDeleting(false);
+      return;
+    }
+    setDeletingLocation(null);
+    setIsDeleting(false);
+    await revalidateInventory();
+    router.refresh();
+    void load();
+  }
 
   async function load() {
     setLoading(true);
@@ -259,17 +286,32 @@ export function LocationList({
                   <td className="px-5 py-4 font-mono text-xs text-slate-500">{location.short_code}</td>
                   <td className="px-5 py-4 text-sm text-slate-600">{location.warehouse?.name ?? "—"}</td>
                   <td className="px-5 py-4 text-right">
-                    <button
-                      type="button"
-                      aria-label={`Edit ${location.name}`}
-                      onClick={() => {
-                        setEditing(location);
-                        setFormOpen(true);
-                      }}
-                      className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-                    >
-                      <Edit3 className="size-4" />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        aria-label={`Edit ${location.name}`}
+                        title={`Edit ${location.name}`}
+                        onClick={() => {
+                          setEditing(location);
+                          setFormOpen(true);
+                        }}
+                        className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                      >
+                        <Edit3 className="size-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Delete ${location.name}`}
+                        title={`Delete ${location.name}`}
+                        onClick={() => {
+                          setDeleteError(null);
+                          setDeletingLocation(location);
+                        }}
+                        className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -288,6 +330,21 @@ export function LocationList({
           }}
         />
       )}
+      <DeleteConfirmDialog
+        isOpen={Boolean(deletingLocation)}
+        title={deletingLocation ? `Delete "${deletingLocation.name}"?` : "Delete location?"}
+        description="Are you sure you want to permanently delete this location? Make sure no inventory remains stored at this location."
+        confirmLabel="Delete location"
+        isDeleting={isDeleting}
+        error={deleteError}
+        onConfirm={() => void handleDeleteLocation()}
+        onCancel={() => {
+          if (!isDeleting) {
+            setDeletingLocation(null);
+            setDeleteError(null);
+          }
+        }}
+      />
     </section>
   );
 }

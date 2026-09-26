@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Edit3, LoaderCircle, PackagePlus, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit3, LoaderCircle, PackagePlus, Search, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { ProductForm } from "@/components/products/product-form";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { revalidateInventory } from "@/lib/actions/revalidate";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -57,6 +58,9 @@ export function ProductList({
   const [error, setError] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | undefined>();
   const [showForm, setShowForm] = useState(false);
+  const [deletingProduct, setDeletingProduct] = useState<ProductRow | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Sync state when props change from server revalidation
   if (initialProducts !== prevProducts) {
@@ -124,6 +128,28 @@ export function ProductList({
 
   async function handleProductSaved() {
     setShowForm(false);
+    await revalidateInventory();
+    router.refresh();
+    void loadProducts();
+  }
+
+  async function handleDeleteProduct() {
+    if (!deletingProduct) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    const supabase = createClient();
+    const { error: err } = await supabase.from("products").delete().eq("id", deletingProduct.id);
+    if (err) {
+      if (err.code === "23503") {
+        setDeleteError("Cannot delete this product because it has associated transaction records or movements.");
+      } else {
+        setDeleteError(formatProductDatabaseError(err.message));
+      }
+      setIsDeleting(false);
+      return;
+    }
+    setDeletingProduct(null);
+    setIsDeleting(false);
     await revalidateInventory();
     router.refresh();
     void loadProducts();
@@ -247,18 +273,32 @@ export function ProductList({
                         </span>
                       </td>
                       <td className="px-5 py-4">
-                        <button
-                          type="button"
-                          aria-label={`Edit ${product.name}`}
-                          title={`Edit ${product.name}`}
-                          onClick={() => {
-                            setEditingProduct(product);
-                            setShowForm(true);
-                          }}
-                          className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                        >
-                          <Edit3 className="size-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            aria-label={`Edit ${product.name}`}
+                            title={`Edit ${product.name}`}
+                            onClick={() => {
+                              setEditingProduct(product);
+                              setShowForm(true);
+                            }}
+                            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                          >
+                            <Edit3 className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Delete ${product.name}`}
+                            title={`Delete ${product.name}`}
+                            onClick={() => {
+                              setDeleteError(null);
+                              setDeletingProduct(product);
+                            }}
+                            className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -306,6 +346,22 @@ export function ProductList({
           onSaved={() => void handleProductSaved()}
         />
       )}
+
+      <DeleteConfirmDialog
+        isOpen={Boolean(deletingProduct)}
+        title={deletingProduct ? `Delete "${deletingProduct.name}"?` : "Delete product?"}
+        description="Are you sure you want to permanently delete this product? All corresponding stock levels for this product will also be deleted."
+        confirmLabel="Delete product"
+        isDeleting={isDeleting}
+        error={deleteError}
+        onConfirm={() => void handleDeleteProduct()}
+        onCancel={() => {
+          if (!isDeleting) {
+            setDeletingProduct(null);
+            setDeleteError(null);
+          }
+        }}
+      />
     </section>
   );
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, MapPin, Package, Warehouse as WarehouseIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import { WarehouseDetailActions } from "@/components/network/warehouse-detail-actions";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -35,15 +36,18 @@ export default async function WarehouseDetailPage({ params }: { params: Promise<
       >
         <ArrowLeft className="size-4" /> Back to warehouses
       </Link>
-      <div className="mt-6 flex items-start gap-4">
-        <span className="flex size-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-          <WarehouseIcon className="size-6" />
-        </span>
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-600">Warehouse detail</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">{warehouse.name}</h1>
-          <p className="mt-1 font-mono text-sm text-slate-500">{warehouse.short_code}</p>
+      <div className="mt-6 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+        <div className="flex items-start gap-4">
+          <span className="flex size-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+            <WarehouseIcon className="size-6" />
+          </span>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-600">Warehouse detail</p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">{warehouse.name}</h1>
+            <p className="mt-1 font-mono text-sm text-slate-500">{warehouse.short_code}</p>
+          </div>
         </div>
+        <WarehouseDetailActions warehouse={warehouse} />
       </div>
       <div className="mt-8 grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-5">

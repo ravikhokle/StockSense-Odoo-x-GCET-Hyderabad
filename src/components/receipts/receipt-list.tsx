@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, ChevronRight, LoaderCircle, Plus, Search } from "lucide-react";
+import { CalendarDays, ChevronRight, Edit3, LoaderCircle, Plus, Search, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { revalidateInventory } from "@/lib/actions/revalidate";
+import { createClient } from "@/lib/supabase/client";
 
 import type { Receipt } from "@/types/database";
 
@@ -20,6 +25,7 @@ const statusLabel: Record<string, string> = {
 };
 
 export function ReceiptList({ initialReceipts = [] }: { initialReceipts?: Receipt[] }) {
+  const router = useRouter();
   const [prevReceipts, setPrevReceipts] = useState(initialReceipts);
   const [receipts, setReceipts] = useState<Receipt[]>(initialReceipts);
   const [query, setQuery] = useState("");
@@ -28,9 +34,31 @@ export function ReceiptList({ initialReceipts = [] }: { initialReceipts?: Receip
   const [loading] = useState(false);
   const [error] = useState<string | null>(null);
 
+  const [deletingReceipt, setDeletingReceipt] = useState<Receipt | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   if (initialReceipts !== prevReceipts) {
     setPrevReceipts(initialReceipts);
     setReceipts(initialReceipts);
+  }
+
+  async function handleDeleteReceipt() {
+    if (!deletingReceipt) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    const supabase = createClient();
+    const { error: delError } = await supabase.from("receipts").delete().eq("id", deletingReceipt.id);
+    if (delError) {
+      setDeleteError(delError.message);
+      setIsDeleting(false);
+      return;
+    }
+    setReceipts((prev) => prev.filter((r) => r.id !== deletingReceipt.id));
+    setDeletingReceipt(null);
+    setIsDeleting(false);
+    await revalidateInventory();
+    router.refresh();
   }
 
   const filtered = receipts.filter(
@@ -147,7 +175,30 @@ export function ReceiptList({ initialReceipts = [] }: { initialReceipts?: Receip
                       </span>
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <ChevronRight className="ml-auto size-4 text-slate-400" />
+                      <div className="flex items-center justify-end gap-1">
+                        <Link
+                          href={`/operations/receipts/${receipt.id}`}
+                          aria-label={`Open ${receipt.reference}`}
+                          title={`Open ${receipt.reference}`}
+                          className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                        >
+                          <ChevronRight className="size-4" />
+                        </Link>
+                        {(receipt.status === "draft" || receipt.status === "cancelled") && (
+                          <button
+                            type="button"
+                            aria-label={`Delete ${receipt.reference}`}
+                            title={`Delete ${receipt.reference}`}
+                            onClick={() => {
+                              setDeleteError(null);
+                              setDeletingReceipt(receipt);
+                            }}
+                            className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -156,6 +207,22 @@ export function ReceiptList({ initialReceipts = [] }: { initialReceipts?: Receip
           </table>
         </div>
       </div>
+
+      <DeleteConfirmDialog
+        isOpen={Boolean(deletingReceipt)}
+        title={deletingReceipt ? `Delete receipt "${deletingReceipt.reference}"?` : "Delete receipt?"}
+        description="Are you sure you want to delete this receipt? This action cannot be undone."
+        confirmLabel="Delete receipt"
+        isDeleting={isDeleting}
+        error={deleteError}
+        onConfirm={() => void handleDeleteReceipt()}
+        onCancel={() => {
+          if (!isDeleting) {
+            setDeletingReceipt(null);
+            setDeleteError(null);
+          }
+        }}
+      />
     </section>
   );
 }

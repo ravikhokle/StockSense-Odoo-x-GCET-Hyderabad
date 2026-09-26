@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, MapPin, Package, Pencil } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import { ProductDetailActions } from "@/components/products/product-detail-actions";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -9,13 +10,19 @@ export const dynamic = "force-dynamic";
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: product, error } = await supabase
-    .from("products")
-    .select("*, category:categories(*), stock_levels(*)")
-    .eq("id", id)
-    .single();
+  const [{ data: product, error }, { data: categoriesData }, { data: locationsData }] = await Promise.all([
+    supabase
+      .from("products")
+      .select("*, category:categories(*), stock_levels(*)")
+      .eq("id", id)
+      .single(),
+    supabase.from("categories").select("name").order("name"),
+    supabase.from("locations").select("*").order("name"),
+  ]);
 
   if (error || !product) notFound();
+  const categoryNames = (categoriesData ?? []).map((c) => c.name);
+  const locations = locationsData ?? [];
   const stockLevels = (product.stock_levels ?? []) as Array<{
     id: string;
     location_name: string;
@@ -43,13 +50,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">{product.name}</h1>
           <p className="mt-2 font-mono text-sm text-slate-500">{product.sku}</p>
         </div>
-        <button
-          type="button"
-          disabled
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-400"
-        >
-          <Pencil className="size-4" /> Edit from products
-        </button>
+        <ProductDetailActions
+          product={product}
+          categories={categoryNames}
+          locations={locations}
+        />
       </div>
       <div className="mt-8 grid gap-5 md:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-5">

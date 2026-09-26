@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Edit3, LoaderCircle, MapPin, Plus, Search, Warehouse as WarehouseIcon, X } from "lucide-react";
+import { Edit3, LoaderCircle, MapPin, Plus, Search, Trash2, Warehouse as WarehouseIcon, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { revalidateInventory } from "@/lib/actions/revalidate";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -116,6 +117,7 @@ function WarehouseForm({
 }
 
 export function WarehouseList({ initialWarehouses = [] }: { initialWarehouses?: Warehouse[] }) {
+  const router = useRouter();
   const [prevWarehouses, setPrevWarehouses] = useState(initialWarehouses);
   const [warehouses, setWarehouses] = useState<Warehouse[]>(initialWarehouses);
   const [query, setQuery] = useState("");
@@ -123,10 +125,35 @@ export function WarehouseList({ initialWarehouses = [] }: { initialWarehouses?: 
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Warehouse>();
+  const [deletingWarehouse, setDeletingWarehouse] = useState<Warehouse | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (initialWarehouses !== prevWarehouses) {
     setPrevWarehouses(initialWarehouses);
     setWarehouses(initialWarehouses);
+  }
+
+  async function handleDeleteWarehouse() {
+    if (!deletingWarehouse) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    const supabase = createClient();
+    const { error: err } = await supabase.from("warehouses").delete().eq("id", deletingWarehouse.id);
+    if (err) {
+      if (err.code === "23503") {
+        setDeleteError("Cannot delete this warehouse because it has associated locations, stock, or operations.");
+      } else {
+        setDeleteError(err.message);
+      }
+      setIsDeleting(false);
+      return;
+    }
+    setDeletingWarehouse(null);
+    setIsDeleting(false);
+    await revalidateInventory();
+    router.refresh();
+    void load();
   }
 
   async function load() {
@@ -207,17 +234,32 @@ export function WarehouseList({ initialWarehouses = [] }: { initialWarehouses?: 
                     <span className="block font-mono text-xs text-slate-400">{warehouse.short_code}</span>
                   </span>
                 </Link>
-                <button
-                  type="button"
-                  aria-label={`Edit ${warehouse.name}`}
-                  onClick={() => {
-                    setEditing(warehouse);
-                    setFormOpen(true);
-                  }}
-                  className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-                >
-                  <Edit3 className="size-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    aria-label={`Edit ${warehouse.name}`}
+                    title={`Edit ${warehouse.name}`}
+                    onClick={() => {
+                      setEditing(warehouse);
+                      setFormOpen(true);
+                    }}
+                    className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                  >
+                    <Edit3 className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${warehouse.name}`}
+                    title={`Delete ${warehouse.name}`}
+                    onClick={() => {
+                      setDeleteError(null);
+                      setDeletingWarehouse(warehouse);
+                    }}
+                    className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
               </div>
               <p className="mt-5 flex items-start gap-2 text-sm leading-5 text-slate-500">
                 <MapPin className="mt-0.5 size-4 shrink-0" />
@@ -237,6 +279,21 @@ export function WarehouseList({ initialWarehouses = [] }: { initialWarehouses?: 
           }}
         />
       )}
+      <DeleteConfirmDialog
+        isOpen={Boolean(deletingWarehouse)}
+        title={deletingWarehouse ? `Delete "${deletingWarehouse.name}"?` : "Delete warehouse?"}
+        description="Are you sure you want to permanently delete this warehouse? All associated locations must be unlinked or removed."
+        confirmLabel="Delete warehouse"
+        isDeleting={isDeleting}
+        error={deleteError}
+        onConfirm={() => void handleDeleteWarehouse()}
+        onCancel={() => {
+          if (!isDeleting) {
+            setDeletingWarehouse(null);
+            setDeleteError(null);
+          }
+        }}
+      />
     </section>
   );
 }

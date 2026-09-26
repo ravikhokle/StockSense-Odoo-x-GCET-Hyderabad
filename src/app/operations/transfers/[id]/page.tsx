@@ -2,14 +2,14 @@ import { notFound } from "next/navigation";
 
 import { TransferDetail } from "@/components/transfers/transfer-detail";
 import { createClient } from "@/lib/supabase/server";
-import type { Transfer, TransferItem } from "@/types/database";
+import type { Location, Transfer, TransferItem } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 
 export default async function TransferDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const [{ data: transfer }, { data: items }] = await Promise.all([
+  const [{ data: transfer }, { data: items }, { data: locations }] = await Promise.all([
     supabase
       .from("transfers")
       .select(
@@ -18,7 +18,14 @@ export default async function TransferDetailPage({ params }: { params: Promise<{
       .eq("id", id)
       .single(),
     supabase.from("transfer_items").select("*, product:products(*)").eq("transfer_id", id),
+    supabase.from("locations").select("*").order("name"),
   ]);
   if (!transfer) notFound();
-  return <TransferDetail transfer={transfer as Transfer} items={(items ?? []) as TransferItem[]} />;
+  return (
+    <TransferDetail
+      transfer={transfer as Transfer}
+      items={(items ?? []) as TransferItem[]}
+      locations={(locations ?? []) as Location[]}
+    />
+  );
 }
