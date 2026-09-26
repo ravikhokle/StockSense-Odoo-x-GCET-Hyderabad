@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <PlaceholderPage eyebrow="Overview" title="Dashboard" description="Your inventory workspace is ready for a connected operational view." />;
+  redirect("/dashboard");
 }

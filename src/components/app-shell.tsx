@@ -22,9 +22,10 @@ import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { LogoutButton } from "@/components/logout-button";
 
 const primaryNavigation = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Products", href: "/products", icon: Package },
 ];
 
@@ -98,7 +99,7 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
       <div className="flex h-19 items-center justify-between border-b border-slate-100 px-5">
-        <Link href="/" className="flex items-center gap-3" onClick={onNavigate}>
+        <Link href="/dashboard" className="flex items-center gap-3" onClick={onNavigate}>
           <span className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
             <Boxes className="size-5" strokeWidth={2.2} />
           </span>
@@ -112,14 +113,17 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
         <Navigation onNavigate={onNavigate} />
       </div>
       <div className="border-t border-slate-100 p-3">
-        <button className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-slate-50">
-          <span className="flex size-9 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-800">AK</span>
-          <span className="min-w-0 flex-1">
+        <div className="flex w-full items-center gap-2 rounded-lg p-2 text-left hover:bg-slate-50">
+          <Link href="/profile" onClick={onNavigate} className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-800">AK</span>
+            <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold text-slate-800">Alex Kim</span>
             <span className="block truncate text-xs text-slate-400">Operations manager</span>
-          </span>
+            </span>
+          </Link>
           <ChevronDown className="size-4 text-slate-400" />
-        </button>
+          <LogoutButton />
+        </div>
       </div>
     </aside>
   );
@@ -127,6 +131,11 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const pathname = usePathname();
+
+  if (["/login", "/signup", "/forgot-password"].includes(pathname)) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex min-h-screen bg-[#f7f9f8] text-slate-950">
