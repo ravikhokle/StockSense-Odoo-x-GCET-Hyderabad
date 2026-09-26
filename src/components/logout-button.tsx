@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/client";
 
 export function LogoutButton() {
@@ -13,6 +14,10 @@ export function LogoutButton() {
 
   async function handleLogout() {
     setIsLoading(true);
+    if (!hasSupabaseConfig()) {
+      router.replace("/login");
+      return;
+    }
     await createClient().auth.signOut();
     router.replace("/login");
     router.refresh();
