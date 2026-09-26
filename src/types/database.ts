@@ -46,6 +46,40 @@ export type Location = {
   warehouse?: Warehouse | null;
 };
 
+export type ReceiptStatus = "draft" | "ready" | "done" | "cancelled";
+
+export type Receipt = {
+  id: string;
+  reference: string;
+  vendor_name: string;
+  destination_location_id: string;
+  schedule_date: string;
+  responsible: string;
+  status: ReceiptStatus;
+  created_at: string;
+  updated_at: string;
+  destination_location?: Location | null;
+};
+
+export type ReceiptItem = {
+  id: string;
+  receipt_id: string;
+  product_id: string;
+  quantity: number;
+  created_at: string;
+  product?: Product | null;
+};
+
+export type StockMovement = {
+  id: string;
+  receipt_id: string;
+  product_id: string;
+  location_id: string;
+  quantity: number;
+  movement_type: "receipt";
+  created_at: string;
+};
+
 export type ProductWithStock = Product & {
   stock_levels: StockLevel[];
 };
@@ -58,9 +92,12 @@ export type Database = {
       stock_levels: { Row: StockLevel; Insert: Omit<StockLevel, "id" | "created_at" | "updated_at">; Update: Partial<Omit<StockLevel, "id" | "created_at" | "updated_at">> };
       warehouses: { Row: Warehouse; Insert: Omit<Warehouse, "id" | "created_at" | "updated_at">; Update: Partial<Omit<Warehouse, "id" | "created_at" | "updated_at">> };
       locations: { Row: Location; Insert: Omit<Location, "id" | "created_at" | "updated_at" | "warehouse">; Update: Partial<Omit<Location, "id" | "created_at" | "updated_at" | "warehouse">> };
+      receipts: { Row: Receipt; Insert: Omit<Receipt, "id" | "created_at" | "updated_at" | "destination_location">; Update: Partial<Omit<Receipt, "id" | "created_at" | "updated_at" | "destination_location">> };
+      receipt_items: { Row: ReceiptItem; Insert: Omit<ReceiptItem, "id" | "created_at" | "product">; Update: Partial<Omit<ReceiptItem, "id" | "created_at" | "product">> };
+      stock_movements: { Row: StockMovement; Insert: Omit<StockMovement, "id" | "created_at">; Update: Partial<Omit<StockMovement, "id" | "created_at">> };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: { complete_receipt: { Args: { p_receipt_id: string }; Returns: undefined } };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
