@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { TransferList } from "@/components/transfers/transfer-list";
 
 export default function TransfersPage() {
-  return <PlaceholderPage eyebrow="Operations" title="Transfers" description="Inventory movement between locations will be managed here." />;
+  return <TransferList />;
 }
