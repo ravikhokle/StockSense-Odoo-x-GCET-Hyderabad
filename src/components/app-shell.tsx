@@ -138,18 +138,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f7f9f8] text-slate-950">
-      <div className="hidden lg:block">
+    <div className="app-shell flex min-h-screen bg-[#f7f9f8] text-slate-950">
+      <div className="app-shell-sidebar hidden lg:block">
         <Sidebar onNavigate={() => setIsMobileNavOpen(false)} />
       </div>
       {isMobileNavOpen && (
         <div className="fixed inset-0 z-40 bg-slate-950/30 lg:hidden" onClick={() => setIsMobileNavOpen(false)} />
       )}
-      <div className={cn("fixed inset-y-0 left-0 z-50 transition-transform lg:hidden", isMobileNavOpen ? "translate-x-0" : "-translate-x-full")}>
+      <div className={cn("app-shell-sidebar fixed inset-y-0 left-0 z-50 transition-transform lg:hidden", isMobileNavOpen ? "translate-x-0" : "-translate-x-full")}>
         <Sidebar onNavigate={() => setIsMobileNavOpen(false)} />
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-19 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-8">
+        <header className="app-shell-header flex h-19 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-8">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation" onClick={() => setIsMobileNavOpen(true)}>
               <Menu className="size-5" />
@@ -166,7 +166,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Button>
           </div>
         </header>
-        <main className="flex-1 px-4 py-7 sm:px-8 sm:py-9">{children}</main>
+        <main className="flex-1 px-4 py-7 sm:px-8 sm:py-9 print:p-0">{children}</main>
       </div>
     </div>
   );

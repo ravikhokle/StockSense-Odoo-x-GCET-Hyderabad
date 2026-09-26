@@ -128,3 +128,34 @@
     @apply font-sans;
   }
 }
+
+@media print {
+  .app-shell-sidebar,
+  .app-shell-header {
+    display: none !important;
+  }
+
+  .app-shell {
+    display: block !important;
+    min-height: 0 !important;
+    background: white !important;
+  }
+
+  .receipt-print-sheet {
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  .receipt-print-sheet::before {
+    content: "StockSense\\A Inventory OS";
+    display: block;
+    white-space: pre;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 14px;
+    margin-bottom: 24px;
+    color: #0f172a;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+}
