@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { LocationList } from "@/components/network/location-list";
 
 export default function LocationsPage() {
-  return <PlaceholderPage eyebrow="Network" title="Locations" description="Storage locations and their hierarchy will be configured here." />;
+  return <LocationList />;
 }

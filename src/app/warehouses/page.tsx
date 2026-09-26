@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { WarehouseList } from "@/components/network/warehouse-list";
 
 export default function WarehousesPage() {
-  return <PlaceholderPage eyebrow="Network" title="Warehouses" description="Your warehouse network will be configured here." />;
+  return <WarehouseList />;
 }
