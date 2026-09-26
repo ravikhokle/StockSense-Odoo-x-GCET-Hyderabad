@@ -5,15 +5,153 @@ import { ArrowLeft, Check, LoaderCircle, Printer, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { revalidateInventory } from "@/lib/actions/revalidate";
 import { createClient } from "@/lib/supabase/client";
 import type { Receipt, ReceiptItem } from "@/types/database";
 
 const statusLabel = { draft: "Draft", ready: "Ready", done: "Done", cancelled: "Cancelled" };
-const statusStyle = { draft: "bg-slate-100 text-slate-600", ready: "bg-amber-50 text-amber-700", done: "bg-emerald-50 text-emerald-700", cancelled: "bg-rose-50 text-rose-700" };
+const statusStyle = {
+  draft: "bg-slate-100 text-slate-600",
+  ready: "bg-amber-50 text-amber-700",
+  done: "bg-emerald-50 text-emerald-700",
+  cancelled: "bg-rose-50 text-rose-700",
+};
 
 export function ReceiptDetail({ receipt, items }: { receipt: Receipt; items: ReceiptItem[] }) {
-  const router = useRouter(); const [loading, setLoading] = useState(false); const [error, setError] = useState<string | null>(null);
-  async function action(kind: "ready" | "done" | "cancelled") { setLoading(true); setError(null); const supabase = createClient(); const result = kind === "done" ? await supabase.rpc("complete_receipt", { p_receipt_id: receipt.id }) : await supabase.from("receipts").update({ status: kind }).eq("id", receipt.id); if (result.error) setError(result.error.message); else router.refresh(); setLoading(false); }
-  function print() { window.print(); }
-  return <section className="receipt-print-sheet mx-auto max-w-5xl print:max-w-none"><div className="print:hidden"><Link href="/operations/receipts" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-emerald-700"><ArrowLeft className="size-4" /> Back to receipts</Link></div><div className="mt-6 flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-600">Inbound receipt</p><h1 className="mt-2 font-mono text-3xl font-bold tracking-tight text-slate-950">{receipt.reference}</h1><p className="mt-2 text-sm text-slate-500">Scheduled for {receipt.schedule_date}</p></div><span className={`w-fit rounded-full px-3 py-1.5 text-xs font-bold ${statusStyle[receipt.status]}`}>{statusLabel[receipt.status]}</span></div>{error && <p role="alert" className="mt-5 rounded-lg bg-red-50 p-3 text-sm text-red-700 print:hidden">{error}</p>}<div className="mt-8 grid gap-4 sm:grid-cols-3"><div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-400">From</p><p className="mt-2 text-sm font-semibold text-slate-800">{receipt.vendor_name}</p></div><div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-400">To</p><p className="mt-2 text-sm font-semibold text-slate-800">{receipt.destination_location?.short_code} · {receipt.destination_location?.name}</p></div><div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-400">Responsible</p><p className="mt-2 text-sm font-semibold text-slate-800">{receipt.responsible}</p></div></div><div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"><h2 className="text-base font-bold text-slate-900">Products</h2><div className="mt-4 overflow-hidden rounded-xl border border-slate-100"><table className="w-full text-left"><thead className="bg-slate-50"><tr><th className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-400">Product</th><th className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-400">SKU</th><th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-400">Quantity</th></tr></thead><tbody className="divide-y divide-slate-100">{items.map((item) => <tr key={item.id}><td className="px-4 py-3 text-sm font-semibold text-slate-700">{item.product?.name}</td><td className="px-4 py-3 font-mono text-xs text-slate-500">{item.product?.sku}</td><td className="px-4 py-3 text-right text-sm text-slate-700">{item.quantity} {item.product?.unit}</td></tr>)}</tbody></table></div></div><div className="mt-5 flex flex-wrap justify-end gap-3 print:hidden">{receipt.status !== "cancelled" && receipt.status !== "done" && <button type="button" disabled={loading} onClick={() => void action("cancelled")} className="inline-flex h-10 items-center gap-2 rounded-lg border border-rose-200 px-4 text-sm font-semibold text-rose-700"><XCircle className="size-4" /> Cancel</button>}<button type="button" onClick={print} className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700"><Printer className="size-4" /> Print</button>{receipt.status === "draft" && <button type="button" disabled={loading} onClick={() => void action("ready")} className="inline-flex h-10 items-center gap-2 rounded-lg bg-amber-500 px-4 text-sm font-semibold text-white"><Check className="size-4" /> Mark ready</button>}{receipt.status === "ready" && <button type="button" disabled={loading} onClick={() => void action("done")} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white">{loading && <LoaderCircle className="size-4 animate-spin" />} Validate receipt</button>}</div></section>;
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function action(kind: "ready" | "done" | "cancelled") {
+    setLoading(true);
+    setError(null);
+    const supabase = createClient();
+    const result =
+      kind === "done"
+        ? await supabase.rpc("complete_receipt", { p_receipt_id: receipt.id })
+        : await supabase.from("receipts").update({ status: kind }).eq("id", receipt.id);
+    if (result.error) {
+      setError(result.error.message);
+    } else {
+      await revalidateInventory();
+      router.refresh();
+    }
+    setLoading(false);
+  }
+
+  function print() {
+    window.print();
+  }
+
+  return (
+    <section className="receipt-print-sheet mx-auto max-w-5xl print:max-w-none">
+      <div className="print:hidden">
+        <Link
+          href="/operations/receipts"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-emerald-700"
+        >
+          <ArrowLeft className="size-4" /> Back to receipts
+        </Link>
+      </div>
+      <div className="mt-6 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-600">Inbound receipt</p>
+          <h1 className="mt-2 font-mono text-3xl font-bold tracking-tight text-slate-950">
+            {receipt.reference}
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">Scheduled for {receipt.schedule_date}</p>
+        </div>
+        <span className={`w-fit rounded-full px-3 py-1.5 text-xs font-bold ${statusStyle[receipt.status]}`}>
+          {statusLabel[receipt.status]}
+        </span>
+      </div>
+      {error && (
+        <p role="alert" className="mt-5 rounded-lg bg-red-50 p-3 text-sm text-red-700 print:hidden">
+          {error}
+        </p>
+      )}
+      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">From</p>
+          <p className="mt-2 text-sm font-semibold text-slate-800">{receipt.vendor_name}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">To</p>
+          <p className="mt-2 text-sm font-semibold text-slate-800">
+            {receipt.destination_location?.short_code} · {receipt.destination_location?.name}
+          </p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Responsible</p>
+          <p className="mt-2 text-sm font-semibold text-slate-800">{receipt.responsible}</p>
+        </div>
+      </div>
+      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+        <h2 className="text-base font-bold text-slate-900">Products</h2>
+        <div className="mt-4 overflow-hidden rounded-xl border border-slate-100">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-400">Product</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-400">SKU</th>
+                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Quantity
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td className="px-4 py-3 text-sm font-semibold text-slate-700">{item.product?.name}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-500">{item.product?.sku}</td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">
+                    {item.quantity} {item.product?.unit}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className="mt-5 flex flex-wrap justify-end gap-3 print:hidden">
+        {receipt.status !== "cancelled" && receipt.status !== "done" && (
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void action("cancelled")}
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-rose-200 px-4 text-sm font-semibold text-rose-700"
+          >
+            <XCircle className="size-4" /> Cancel
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={print}
+          className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700"
+        >
+          <Printer className="size-4" /> Print
+        </button>
+        {receipt.status === "draft" && (
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void action("ready")}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-amber-500 px-4 text-sm font-semibold text-white"
+          >
+            <Check className="size-4" /> Mark ready
+          </button>
+        )}
+        {receipt.status === "ready" && (
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void action("done")}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white"
+          >
+            {loading && <LoaderCircle className="size-4 animate-spin" />} Validate receipt
+          </button>
+        )}
+      </div>
+    </section>
+  );
 }

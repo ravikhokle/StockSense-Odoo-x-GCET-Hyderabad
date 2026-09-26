@@ -1,26 +1,166 @@
 "use client";
 
 import { Edit3, LoaderCircle, MapPin, Plus, Search, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import { revalidateInventory } from "@/lib/actions/revalidate";
 import { createClient } from "@/lib/supabase/client";
 import { locationSchema, type LocationFormValues } from "@/lib/network/schemas";
 import type { Location, Warehouse } from "@/types/database";
 
-function LocationForm({ location, warehouses, onClose, onSaved }: { location?: Location; warehouses: Warehouse[]; onClose: () => void; onSaved: () => void }) {
-  const form = useForm<LocationFormValues>({ resolver: zodResolver(locationSchema), defaultValues: { name: location?.name ?? "", shortCode: location?.short_code ?? "", warehouseId: location?.warehouse_id ?? "" } }); const [error, setError] = useState<string | null>(null);
-  async function submit(values: LocationFormValues) { setError(null); const supabase = createClient(); const result = location ? await supabase.from("locations").update({ name: values.name, short_code: values.shortCode, warehouse_id: values.warehouseId }).eq("id", location.id) : await supabase.from("locations").insert({ name: values.name, short_code: values.shortCode, warehouse_id: values.warehouseId }); if (result.error) { setError(result.error.code === "23505" ? "That short code already exists in this warehouse." : result.error.message); return; } onSaved(); }
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4"><div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl sm:p-8"><div className="flex justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-600">Network</p><h2 className="mt-2 text-2xl font-bold text-slate-950">{location ? "Edit location" : "Create location"}</h2></div><button type="button" aria-label="Close" onClick={onClose}><X className="size-5 text-slate-400" /></button></div><form className="mt-7 space-y-4" onSubmit={form.handleSubmit(submit)}>{error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}<label className="block space-y-1.5"><span className="text-xs font-bold text-slate-600">Name</span><input placeholder="Stock or Production" className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500" {...form.register("name")} />{form.formState.errors.name?.message && <span className="text-xs text-red-600">{form.formState.errors.name.message}</span>}</label><label className="block space-y-1.5"><span className="text-xs font-bold text-slate-600">Short Code</span><input placeholder="WH/Stock" className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500" {...form.register("shortCode")} />{form.formState.errors.shortCode?.message && <span className="text-xs text-red-600">{form.formState.errors.shortCode.message}</span>}</label><label className="block space-y-1.5"><span className="text-xs font-bold text-slate-600">Warehouse</span><select className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500" {...form.register("warehouseId")}><option value="">Select warehouse</option>{warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name} ({warehouse.short_code})</option>)}</select>{form.formState.errors.warehouseId?.message && <span className="text-xs text-red-600">{form.formState.errors.warehouseId.message}</span>}</label><div className="flex justify-end gap-3 border-t border-slate-100 pt-5"><button type="button" onClick={onClose} className="h-10 rounded-lg px-4 text-sm font-semibold text-slate-600">Cancel</button><button type="submit" disabled={form.formState.isSubmitting} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white disabled:opacity-50">{form.formState.isSubmitting && <LoaderCircle className="size-4 animate-spin" />}{location ? "Save changes" : "Create location"}</button></div></form></div></div>;
+function LocationForm({
+  location,
+  warehouses,
+  onClose,
+  onSaved,
+}: {
+  location?: Location;
+  warehouses: Warehouse[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const router = useRouter();
+  const form = useForm<LocationFormValues>({
+    resolver: zodResolver(locationSchema),
+    defaultValues: {
+      name: location?.name ?? "",
+      shortCode: location?.short_code ?? "",
+      warehouseId: location?.warehouse_id ?? "",
+    },
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(values: LocationFormValues) {
+    setError(null);
+    const supabase = createClient();
+    const result = location
+      ? await supabase
+          .from("locations")
+          .update({ name: values.name, short_code: values.shortCode, warehouse_id: values.warehouseId })
+          .eq("id", location.id)
+      : await supabase
+          .from("locations")
+          .insert({ name: values.name, short_code: values.shortCode, warehouse_id: values.warehouseId });
+    if (result.error) {
+      setError(result.error.code === "23505" ? "That short code already exists in this warehouse." : result.error.message);
+      return;
+    }
+    await revalidateInventory();
+    router.refresh();
+    onSaved();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl sm:p-8">
+        <div className="flex justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-600">Network</p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-950">{location ? "Edit location" : "Create location"}</h2>
+          </div>
+          <button type="button" aria-label="Close" onClick={onClose}>
+            <X className="size-5 text-slate-400" />
+          </button>
+        </div>
+        <form className="mt-7 space-y-4" onSubmit={form.handleSubmit(submit)}>
+          {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          <label className="block space-y-1.5">
+            <span className="text-xs font-bold text-slate-600">Name</span>
+            <input
+              placeholder="Stock or Production"
+              className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+              {...form.register("name")}
+            />
+            {form.formState.errors.name?.message && (
+              <span className="text-xs text-red-600">{form.formState.errors.name.message}</span>
+            )}
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-bold text-slate-600">Short Code</span>
+            <input
+              placeholder="WH/Stock"
+              className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+              {...form.register("shortCode")}
+            />
+            {form.formState.errors.shortCode?.message && (
+              <span className="text-xs text-red-600">{form.formState.errors.shortCode.message}</span>
+            )}
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-bold text-slate-600">Warehouse</span>
+            <select
+              className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+              {...form.register("warehouseId")}
+            >
+              <option value="">Select warehouse</option>
+              {warehouses.map((warehouse) => (
+                <option key={warehouse.id} value={warehouse.id}>
+                  {warehouse.name} ({warehouse.short_code})
+                </option>
+              ))}
+            </select>
+            {form.formState.errors.warehouseId?.message && (
+              <span className="text-xs text-red-600">{form.formState.errors.warehouseId.message}</span>
+            )}
+          </label>
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
+            <button type="button" onClick={onClose} className="h-10 rounded-lg px-4 text-sm font-semibold text-slate-600">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={form.formState.isSubmitting}
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {form.formState.isSubmitting && <LoaderCircle className="size-4 animate-spin" />}
+              {location ? "Save changes" : "Create location"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
-export function LocationList() {
-  const [locations, setLocations] = useState<Location[]>([]); const [warehouses, setWarehouses] = useState<Warehouse[]>([]); const [query, setQuery] = useState(""); const [warehouseFilter, setWarehouseFilter] = useState("all"); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [formOpen, setFormOpen] = useState(false); const [editing, setEditing] = useState<Location>();
+export function LocationList({
+  initialLocations = [],
+  initialWarehouses = [],
+}: {
+  initialLocations?: Location[];
+  initialWarehouses?: Warehouse[];
+}) {
+  const [locations, setLocations] = useState<Location[]>(initialLocations);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>(initialWarehouses);
+  const [prevInitialLocations, setPrevInitialLocations] = useState(initialLocations);
+  const [prevInitialWarehouses, setPrevInitialWarehouses] = useState(initialWarehouses);
+
+  if (initialLocations !== prevInitialLocations) {
+    setPrevInitialLocations(initialLocations);
+    setLocations(initialLocations);
+  }
+
+  if (initialWarehouses !== prevInitialWarehouses) {
+    setPrevInitialWarehouses(initialWarehouses);
+    setWarehouses(initialWarehouses);
+  }
+
+  const [query, setQuery] = useState("");
+  const [warehouseFilter, setWarehouseFilter] = useState("all");
+  const [loading, setLoading] = useState(initialLocations.length === 0 && initialWarehouses.length === 0);
+  const [error, setError] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Location>();
+
   async function load() {
     setLoading(true);
     const supabase = createClient();
-    const [{ data: locationData, error: locationError }, { data: warehouseData, error: warehouseError }] = await Promise.all([
+    const [
+      { data: locationData, error: locationError },
+      { data: warehouseData, error: warehouseError },
+    ] = await Promise.all([
       supabase.from("locations").select("*, warehouse:warehouses(*)").order("name"),
       supabase.from("warehouses").select("id, name, short_code, address, created_at, updated_at").order("name"),
     ]);
@@ -29,7 +169,125 @@ export function LocationList() {
     setError(locationError?.message ?? warehouseError?.message ?? null);
     setLoading(false);
   }
-  useEffect(() => { queueMicrotask(() => { void load(); }); }, []);
-  const filtered = locations.filter((location) => `${location.name} ${location.short_code}`.toLowerCase().includes(query.toLowerCase()) && (warehouseFilter === "all" || location.warehouse_id === warehouseFilter));
-  return <section className="mx-auto max-w-6xl"><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-600">Network</p><h1 className="text-3xl font-bold tracking-tight text-slate-950">Locations</h1><p className="mt-2 text-sm text-slate-500">Organize storage locations inside each warehouse.</p></div><button type="button" disabled={warehouses.length === 0} onClick={() => { setEditing(undefined); setFormOpen(true); }} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white disabled:opacity-50"><Plus className="size-4" /> Add location</button></div><div className="mt-8 rounded-2xl border border-slate-200 bg-white p-4"><div className="grid gap-3 md:grid-cols-[1fr_220px]"><label className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search locations" className="h-10 w-full rounded-lg border border-slate-200 pl-9 text-sm outline-none focus:border-emerald-500" /></label><select value={warehouseFilter} onChange={(event) => setWarehouseFilter(event.target.value)} className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"><option value="all">All warehouses</option>{warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select></div></div>{warehouses.length === 0 && <p className="mt-5 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Create a warehouse before adding locations.</p>}{error && <p className="mt-5 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}<div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white"><table className="w-full text-left"><thead className="border-b border-slate-100 bg-slate-50"><tr><th className="px-5 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Location</th><th className="px-5 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Short Code</th><th className="px-5 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Warehouse</th><th className="px-5 py-3 text-right text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{loading ? <tr><td colSpan={4} className="py-16 text-center"><LoaderCircle className="mx-auto animate-spin text-emerald-600" /></td></tr> : filtered.length === 0 ? <tr><td colSpan={4} className="py-16 text-center"><MapPin className="mx-auto size-8 text-slate-300" /><p className="mt-3 text-sm font-semibold text-slate-600">No locations yet</p></td></tr> : filtered.map((location) => <tr key={location.id}><td className="px-5 py-4 font-semibold text-slate-800">{location.name}</td><td className="px-5 py-4 font-mono text-xs text-slate-500">{location.short_code}</td><td className="px-5 py-4 text-sm text-slate-600">{location.warehouse?.name ?? "—"}</td><td className="px-5 py-4 text-right"><button type="button" aria-label={`Edit ${location.name}`} onClick={() => { setEditing(location); setFormOpen(true); }} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><Edit3 className="size-4" /></button></td></tr>)}</tbody></table></div>{formOpen && <LocationForm location={editing} warehouses={warehouses} onClose={() => setFormOpen(false)} onSaved={() => { setFormOpen(false); void load(); }} />}</section>;
+
+
+  const filtered = locations.filter(
+    (location) =>
+      `${location.name} ${location.short_code}`.toLowerCase().includes(query.toLowerCase()) &&
+      (warehouseFilter === "all" || location.warehouse_id === warehouseFilter)
+  );
+
+  return (
+    <section className="mx-auto max-w-6xl">
+      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-600">Network</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-950">Locations</h1>
+          <p className="mt-2 text-sm text-slate-500">Organize storage locations inside each warehouse.</p>
+        </div>
+        <button
+          type="button"
+          disabled={warehouses.length === 0}
+          onClick={() => {
+            setEditing(undefined);
+            setFormOpen(true);
+          }}
+          className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          <Plus className="size-4" /> Add location
+        </button>
+      </div>
+      <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+          <label className="relative">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search locations"
+              className="h-10 w-full rounded-lg border border-slate-200 pl-9 text-sm outline-none focus:border-emerald-500"
+            />
+          </label>
+          <select
+            value={warehouseFilter}
+            onChange={(event) => setWarehouseFilter(event.target.value)}
+            className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+          >
+            <option value="all">All warehouses</option>
+            {warehouses.map((warehouse) => (
+              <option key={warehouse.id} value={warehouse.id}>
+                {warehouse.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {warehouses.length === 0 && (
+        <p className="mt-5 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+          Create a warehouse before adding locations.
+        </p>
+      )}
+      {error && <p className="mt-5 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <table className="w-full text-left">
+          <thead className="border-b border-slate-100 bg-slate-50">
+            <tr>
+              <th className="px-5 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Location</th>
+              <th className="px-5 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Short Code</th>
+              <th className="px-5 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Warehouse</th>
+              <th className="px-5 py-3 text-right text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {loading ? (
+              <tr>
+                <td colSpan={4} className="py-16 text-center">
+                  <LoaderCircle className="mx-auto animate-spin text-emerald-600" />
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-16 text-center">
+                  <MapPin className="mx-auto size-8 text-slate-300" />
+                  <p className="mt-3 text-sm font-semibold text-slate-600">No locations yet</p>
+                </td>
+              </tr>
+            ) : (
+              filtered.map((location) => (
+                <tr key={location.id}>
+                  <td className="px-5 py-4 font-semibold text-slate-800">{location.name}</td>
+                  <td className="px-5 py-4 font-mono text-xs text-slate-500">{location.short_code}</td>
+                  <td className="px-5 py-4 text-sm text-slate-600">{location.warehouse?.name ?? "—"}</td>
+                  <td className="px-5 py-4 text-right">
+                    <button
+                      type="button"
+                      aria-label={`Edit ${location.name}`}
+                      onClick={() => {
+                        setEditing(location);
+                        setFormOpen(true);
+                      }}
+                      className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                    >
+                      <Edit3 className="size-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      {formOpen && (
+        <LocationForm
+          location={editing}
+          warehouses={warehouses}
+          onClose={() => setFormOpen(false)}
+          onSaved={() => {
+            setFormOpen(false);
+            void load();
+          }}
+        />
+      )}
+    </section>
+  );
 }

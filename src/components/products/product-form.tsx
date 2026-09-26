@@ -2,13 +2,15 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoaderCircle, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { revalidateInventory } from "@/lib/actions/revalidate";
 import { createClient } from "@/lib/supabase/client";
 import { formatProductDatabaseError } from "@/lib/products/errors";
 import { productSchema, type ProductFormInput, type ProductFormValues } from "@/lib/products/schemas";
-import type { Product } from "@/types/database";
+import type { Location, Product } from "@/types/database";
 
 function Field({ label, error, ...props }: { label: string; error?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
@@ -20,7 +22,8 @@ function Field({ label, error, ...props }: { label: string; error?: string } & R
   );
 }
 
-export function ProductForm({ product, categories, onClose, onSaved }: { product?: Product; categories: string[]; onClose: () => void; onSaved: () => void }) {
+export function ProductForm({ product, categories, locations, onClose, onSaved }: { product?: Product; categories: string[]; locations: Location[]; onClose: () => void; onSaved: () => void }) {
+  const router = useRouter();
   const isEditing = Boolean(product);
   const [formError, setFormError] = useState<string | null>(null);
   const supabase = createClient();
@@ -32,6 +35,7 @@ export function ProductForm({ product, categories, onClose, onSaved }: { product
       category: product?.category?.name ?? "",
       unit: product?.unit ?? "",
       initialStock: 0,
+      initialStockLocationId: "",
       reorderLevel: product?.reorder_level ?? 0,
     },
   });
@@ -43,6 +47,7 @@ export function ProductForm({ product, categories, onClose, onSaved }: { product
       category: product?.category?.name ?? "",
       unit: product?.unit ?? "",
       initialStock: 0,
+      initialStockLocationId: "",
       reorderLevel: product?.reorder_level ?? 0,
     });
   }, [form, product]);
@@ -78,12 +83,16 @@ export function ProductForm({ product, categories, onClose, onSaved }: { product
         setFormError(error?.code === "23505" ? "That SKU is already in use." : formatProductDatabaseError(error?.message ?? "Could not create product."));
         return;
       }
-      const { error: stockError } = await supabase.from("stock_levels").insert({ product_id: createdProduct.id, location_name: "Default location", quantity: values.initialStock, reserved_quantity: 0 });
+      const location = locations.find((item) => item.id === values.initialStockLocationId);
+      const { error: stockError } = await supabase.from("stock_levels").insert({ product_id: createdProduct.id, location_id: location?.id ?? null, location_name: location?.short_code ?? "Default location", quantity: values.initialStock, reserved_quantity: 0 });
       if (stockError) {
         setFormError(formatProductDatabaseError(stockError.message));
         return;
       }
     }
+
+    await revalidateInventory();
+    router.refresh();
     onSaved();
   }
 
@@ -102,6 +111,7 @@ export function ProductForm({ product, categories, onClose, onSaved }: { product
             <div className="space-y-1.5"><label htmlFor="category" className="text-xs font-bold text-slate-600">Category</label><input id="category" list="product-categories" placeholder="e.g. Packaging" className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-3 focus:ring-emerald-100" {...form.register("category")} /><datalist id="product-categories">{categories.map((category) => <option key={category} value={category} />)}</datalist>{form.formState.errors.category?.message && <span className="block text-xs font-medium text-red-600">{form.formState.errors.category.message}</span>}</div>
             <Field label="Unit of Measure" placeholder="e.g. Each" {...form.register("unit")} error={form.formState.errors.unit?.message} />
             <Field label="Initial Stock" type="number" min="0" step="0.001" disabled={isEditing} {...form.register("initialStock", { valueAsNumber: true })} error={form.formState.errors.initialStock?.message} />
+            <label className="space-y-1.5"><span className="text-xs font-bold text-slate-600">Initial Stock Location</span><select disabled={isEditing} className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-emerald-500 disabled:bg-slate-50" {...form.register("initialStockLocationId")}><option value="">Select location</option>{locations.map((location) => <option key={location.id} value={location.id}>{location.short_code} · {location.name}</option>)}</select>{form.formState.errors.initialStockLocationId?.message && <span className="block text-xs font-medium text-red-600">{form.formState.errors.initialStockLocationId.message}</span>}</label>
             <Field label="Reorder Level" type="number" min="0" step="0.001" {...form.register("reorderLevel", { valueAsNumber: true })} error={form.formState.errors.reorderLevel?.message} />
           </div>
           {isEditing && <p className="text-xs text-slate-400">Initial stock is locked during edits so historical stock records remain unchanged.</p>}

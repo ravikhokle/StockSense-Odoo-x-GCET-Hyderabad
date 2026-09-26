@@ -2,6 +2,8 @@ import { MoveHistoryView, type MoveHistoryLocation, type MoveHistoryRow, type Mo
 import { createClient } from "@/lib/supabase/server";
 import type { Adjustment, Delivery, Location, Product, Receipt, StockMovement, Transfer, Warehouse } from "@/types/database";
 
+export const dynamic = "force-dynamic";
+
 export default async function MoveHistoryPage() {
   const supabase = await createClient();
   const [{ data: movementData }, { data: productData }, { data: locationData }, { data: warehouseData }, { data: receiptData }, { data: deliveryData }, { data: transferData }, { data: adjustmentData }] = await Promise.all([
@@ -24,7 +26,6 @@ export default async function MoveHistoryPage() {
   const adjustments = (adjustmentData ?? []) as Pick<Adjustment, "id" | "reason" | "status" | "location_id">[];
   const productById = new Map(products.map((product) => [product.id, product]));
   const locationById = new Map(locations.map((location) => [location.id, location]));
-  const warehouseById = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse]));
   const locationLabel = (id: string | null) => { if (!id) return "-"; const location = locationById.get(id); return location ? `${location.short_code} · ${location.name}` : "-"; };
   const warehouseIdsFor = (locationIds: string[]) => locationIds.flatMap((id) => { const location = locationById.get(id); return location ? [location.warehouse_id] : []; });
   const rows: MoveHistoryRow[] = movements.map((movement) => {
